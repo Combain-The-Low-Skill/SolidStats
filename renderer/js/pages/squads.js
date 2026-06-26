@@ -55,9 +55,6 @@ Pages.squads = async function () {
     container: controls
   });
 
-  // Sync dropdown if rotationIdx adjusted externally
-  function syncRotDropdown() { rotDropdown.setValue(String(rotationIdx)); }
-
   // ═══════════════════════════════════════════════════════
   // STAT CARDS
   // ═══════════════════════════════════════════════════════

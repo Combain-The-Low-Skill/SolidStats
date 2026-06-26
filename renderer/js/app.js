@@ -264,7 +264,7 @@ function esc(s) {
   return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
 }
 
-// ── Custom Dropdown ────────────────────────────────────────────────────
+// ── Custom Dropdown (анимация: reactbits.dev/components/animated-list) ─
 // createCustomDropdown({ items, selected, onChange, container })
 //   items: [{ value, label, sub, isCurrent }]
 //   selected: value of initially selected item
@@ -273,12 +273,14 @@ function esc(s) {
 // Returns: { setValue(v) } for programmatic updates
 function createCustomDropdown({ items, selected, onChange, container }) {
   let currentValue = selected;
+  let selectedIndex = items.findIndex(i => String(i.value) === String(selected));
+  let isOpen = false;
 
   function labelFor(v) {
-    const item = items.find(i => String(i.value) === String(v));
-    return item || items[0];
+    return items.find(i => String(i.value) === String(v)) || items[0];
   }
 
+  // ── DOM skeleton ──────────────────────────────────────────────────────
   const wrap = document.createElement('div');
   wrap.className = 'custom-dropdown';
 
@@ -295,28 +297,52 @@ function createCustomDropdown({ items, selected, onChange, container }) {
   trigger.appendChild(labelEl);
   trigger.appendChild(arrow);
 
-  const menu = document.createElement('div');
-  menu.className = 'custom-dropdown__menu';
+  // menu: scroll-list-container из AnimatedList
+  const menuWrap = document.createElement('div');
+  menuWrap.className = 'custom-dropdown__menu';
+
+  const listEl = document.createElement('div');
+  listEl.className = 'custom-dropdown__list';
+
+  const topGrad = document.createElement('div');
+  topGrad.className = 'custom-dropdown__gradient custom-dropdown__gradient--top';
+
+  const botGrad = document.createElement('div');
+  botGrad.className = 'custom-dropdown__gradient custom-dropdown__gradient--bottom';
+
+  menuWrap.appendChild(listEl);
+  menuWrap.appendChild(topGrad);
+  menuWrap.appendChild(botGrad);
 
   wrap.appendChild(trigger);
-  wrap.appendChild(menu);
+  wrap.appendChild(menuWrap);
 
+  // ── Render trigger label ──────────────────────────────────────────────
   function renderLabel(v) {
     const item = labelFor(v);
     if (!item) return;
     labelEl.innerHTML = `<span class="dd-main">${esc(item.label)}</span>${item.sub ? `<span class="dd-sub">${esc(item.sub)}</span>` : ''}`;
   }
 
-  function renderMenu() {
-    menu.innerHTML = '';
-    items.forEach(item => {
-      const row = document.createElement('div');
-      const isCur = item.isCurrent;
+  // ── Animated items (reactbits AnimatedList pattern) ───────────────────
+  // Each item: scale 0.7→1, opacity 0→1 via IntersectionObserver + stagger delay
+  function buildItems() {
+    listEl.innerHTML = '';
+    items.forEach((item, index) => {
       const isSel = String(item.value) === String(currentValue);
+      const isCur = item.isCurrent;
+
+      const row = document.createElement('div');
       row.className = 'custom-dropdown__item' +
         (isSel ? ' selected' : '') +
         (item.value === '-1' || item.value === -1 ? ' custom-dropdown__item--all' : '') +
         (isCur ? ' custom-dropdown__item--current' : '');
+      row.dataset.index = index;
+
+      // Initial state (mirrors AnimatedList: scale 0.7, opacity 0)
+      row.style.transform = 'scale(0.7)';
+      row.style.opacity = '0';
+      row.style.transition = `transform 0.2s ease ${index * 0.03}s, opacity 0.2s ease ${index * 0.03}s`;
 
       const dot = document.createElement('div');
       dot.className = 'dd-item-dot';
@@ -335,52 +361,133 @@ function createCustomDropdown({ items, selected, onChange, container }) {
         row.appendChild(countSpan);
       }
 
+      row.addEventListener('mouseenter', () => {
+        selectedIndex = index;
+        highlightIndex(index);
+      });
+
       row.addEventListener('click', () => {
+        selectedIndex = index;
         currentValue = item.value;
         renderLabel(currentValue);
-        renderMenu();
         close();
         onChange(item.value);
       });
 
-      menu.appendChild(row);
+      listEl.appendChild(row);
+    });
+
+    // Animate in (mirrors AnimatedList: scale 0.7→1, opacity 0→1 with stagger)
+    // IntersectionObserver не подходит для коротких списков в popup — используем rAF
+    requestAnimationFrame(() => {
+      listEl.querySelectorAll('.custom-dropdown__item').forEach(el => {
+        el.style.transform = 'scale(1)';
+        el.style.opacity = '1';
+      });
     });
   }
 
+  function highlightIndex(idx) {
+    listEl.querySelectorAll('.custom-dropdown__item').forEach((el, i) => {
+      el.classList.toggle('selected', i === idx);
+    });
+  }
+
+  // ── Gradient opacity on scroll (reactbits AnimatedList handleScroll) ──
+  listEl.addEventListener('scroll', () => {
+    const { scrollTop, scrollHeight, clientHeight } = listEl;
+    topGrad.style.opacity = Math.min(scrollTop / 50, 1);
+    const bottomDist = scrollHeight - (scrollTop + clientHeight);
+    botGrad.style.opacity = scrollHeight <= clientHeight ? 0 : Math.min(bottomDist / 50, 1);
+  });
+
+  // ── Open / close ──────────────────────────────────────────────────────
   function open() {
+    if (isOpen) return;
+    isOpen = true;
     wrap.classList.add('open');
-    // Scroll selected item into view
-    const sel = menu.querySelector('.selected');
-    if (sel) setTimeout(() => sel.scrollIntoView({ block: 'nearest' }), 50);
+    buildItems();
+    // Scroll to selected
+    setTimeout(() => {
+      const sel = listEl.querySelector('.selected');
+      if (sel) sel.scrollIntoView({ block: 'nearest' });
+      // Init bottom gradient
+      const { scrollHeight, clientHeight } = listEl;
+      botGrad.style.opacity = scrollHeight > clientHeight ? '1' : '0';
+    }, 20);
+    document.addEventListener('keydown', keyHandler);
   }
 
   function close() {
+    if (!isOpen) return;
+    isOpen = false;
     wrap.classList.remove('open');
+    document.removeEventListener('keydown', keyHandler);
+  }
+
+  // ── Keyboard navigation (reactbits AnimatedList handleKeyDown) ────────
+  function keyHandler(e) {
+    if (e.key === 'ArrowDown' || (e.key === 'Tab' && !e.shiftKey)) {
+      e.preventDefault();
+      selectedIndex = Math.min(selectedIndex + 1, items.length - 1);
+      highlightIndex(selectedIndex);
+      scrollToIndex(selectedIndex);
+    } else if (e.key === 'ArrowUp' || (e.key === 'Tab' && e.shiftKey)) {
+      e.preventDefault();
+      selectedIndex = Math.max(selectedIndex - 1, 0);
+      highlightIndex(selectedIndex);
+      scrollToIndex(selectedIndex);
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      const item = items[selectedIndex];
+      if (item) {
+        currentValue = item.value;
+        renderLabel(currentValue);
+        close();
+        onChange(item.value);
+      }
+    } else if (e.key === 'Escape') {
+      close();
+    }
+  }
+
+  function scrollToIndex(idx) {
+    const el = listEl.querySelector(`[data-index="${idx}"]`);
+    if (!el) return;
+    const extraMargin = 50;
+    const top = el.offsetTop;
+    const bottom = top + el.offsetHeight;
+    if (top < listEl.scrollTop + extraMargin) {
+      listEl.scrollTo({ top: top - extraMargin, behavior: 'smooth' });
+    } else if (bottom > listEl.scrollTop + listEl.clientHeight - extraMargin) {
+      listEl.scrollTo({ top: bottom - listEl.clientHeight + extraMargin, behavior: 'smooth' });
+    }
   }
 
   trigger.addEventListener('click', (e) => {
     e.stopPropagation();
-    wrap.classList.contains('open') ? close() : open();
+    isOpen ? close() : open();
   });
 
-  // Close on outside click — use capture to catch even stopPropagation
   function outsideHandler(e) {
     if (!wrap.contains(e.target)) close();
   }
   document.addEventListener('click', outsideHandler);
 
-  // Cleanup when page changes
-  PageCleanup.register(() => document.removeEventListener('click', outsideHandler));
+  PageCleanup.register(() => {
+    close();
+    document.removeEventListener('click', outsideHandler);
+  });
 
   renderLabel(currentValue);
-  renderMenu();
   container.appendChild(wrap);
 
   return {
     setValue(v) {
       currentValue = v;
+      selectedIndex = items.findIndex(i => String(i.value) === String(v));
       renderLabel(v);
-      renderMenu();
+      if (isOpen) buildItems();
     }
   };
 }

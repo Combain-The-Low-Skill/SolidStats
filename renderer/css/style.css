@@ -552,24 +552,24 @@ input, select { font: inherit; }
 }
 .custom-dropdown__arrow svg { width: 12px; height: 12px; }
 
+/* menu wrapper — позиционирование и анимация появления */
 .custom-dropdown__menu {
   position: absolute;
   top: calc(100% + 4px);
   right: 0;
   min-width: 100%;
-  max-height: 320px;
-  overflow-y: auto;
   background: #0f1410;
   border: 1px solid rgba(255,255,255,0.10);
   border-radius: var(--radius-sm);
   box-shadow: 0 8px 32px rgba(0,0,0,0.6), 0 0 0 1px rgba(46,217,160,0.06);
   z-index: 999;
-  padding: 4px;
   opacity: 0;
   transform: translateY(-6px) scaleY(0.97);
   transform-origin: top right;
   pointer-events: none;
   transition: opacity 0.18s ease, transform 0.18s cubic-bezier(0.22,1,0.36,1);
+  /* для градиентов из AnimatedList */
+  overflow: hidden;
 }
 .custom-dropdown.open .custom-dropdown__menu {
   opacity: 1;
@@ -577,6 +577,38 @@ input, select { font: inherit; }
   pointer-events: auto;
 }
 
+/* scroll-list из AnimatedList */
+.custom-dropdown__list {
+  max-height: 280px;
+  overflow-y: auto;
+  padding: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.10) transparent;
+}
+.custom-dropdown__list::-webkit-scrollbar { width: 5px; }
+.custom-dropdown__list::-webkit-scrollbar-track { background: transparent; }
+.custom-dropdown__list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.10); border-radius: 3px; }
+
+/* top/bottom градиенты (reactbits AnimatedList) */
+.custom-dropdown__gradient {
+  position: absolute;
+  left: 0; right: 0;
+  height: 48px;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+.custom-dropdown__gradient--top {
+  top: 0;
+  background: linear-gradient(to bottom, #0f1410, transparent);
+  opacity: 0;
+}
+.custom-dropdown__gradient--bottom {
+  bottom: 0;
+  background: linear-gradient(to top, #0f1410, transparent);
+  opacity: 1;
+}
+
+/* item — scale/opacity анимируются через JS (IntersectionObserver, как в AnimatedList) */
 .custom-dropdown__item {
   display: flex;
   align-items: center;
@@ -584,23 +616,18 @@ input, select { font: inherit; }
   padding: 7px 10px;
   border-radius: 5px;
   cursor: pointer;
-  transition: background 0.12s ease;
   white-space: nowrap;
+  /* transform и opacity управляются JS */
+  will-change: transform, opacity;
 }
-.custom-dropdown__item:hover {
-  background: rgba(255,255,255,0.05);
-}
+.custom-dropdown__item:hover { background: rgba(255,255,255,0.05); }
 .custom-dropdown__item.selected {
   background: rgba(46,217,160,0.08);
   color: var(--accent);
 }
-.custom-dropdown__item.selected .dd-item-count {
-  color: rgba(46,217,160,0.6);
-}
-.dd-item-date {
-  font-weight: 500;
-  font-size: 12px;
-}
+.custom-dropdown__item.selected .dd-item-count { color: rgba(46,217,160,0.6); }
+
+.dd-item-date { font-weight: 500; font-size: 12px; }
 .dd-item-count {
   font-size: 11px;
   color: var(--text-muted);
@@ -608,8 +635,7 @@ input, select { font: inherit; }
   padding-left: 12px;
 }
 .dd-item-dot {
-  width: 5px;
-  height: 5px;
+  width: 5px; height: 5px;
   border-radius: 50%;
   background: var(--accent);
   flex-shrink: 0;
@@ -618,12 +644,23 @@ input, select { font: inherit; }
 }
 .custom-dropdown__item.selected .dd-item-dot { opacity: 1; }
 .custom-dropdown__item--all .dd-item-date { color: var(--text-dim); }
-.custom-dropdown__item--current .dd-item-dot { background: var(--accent); box-shadow: 0 0 5px var(--accent); }
+.custom-dropdown__item--current .dd-item-dot { box-shadow: 0 0 5px var(--accent); }
 
-/* Legacy native select (kept for fallback, hidden by default) */
+/* Native select used in settings (page size) — keep visible */
 select.filter-select {
-  display: none;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  padding: 7px 12px;
+  font-size: 12px;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.22s ease, box-shadow 0.22s ease;
 }
+select.filter-select:hover,
+select.filter-select:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(46,217,160,0.08); }
+select.filter-select option { background: var(--surface-alt); }
 
 .search-input {
   background: rgba(255,255,255,0.04);
