@@ -1,0 +1,37 @@
+{
+  "name": "solidstats",
+  "version": "0.2.0",
+  "description": "SolidGames Arma 3 stats",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --remote-debugging-port=9222 --remote-allow-origins=*",
+    "build": "electron-builder --win --x64"
+  },
+  "build": {
+    "appId": "com.solidgames.stats",
+    "productName": "SolidStats",
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer/**/*",
+      "assets/**/*",
+      "node_modules/**/*"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "renderer/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  },
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.0.0"
+  },
+  "dependencies": {
+    "three": "^0.128.0"
+  }
+}

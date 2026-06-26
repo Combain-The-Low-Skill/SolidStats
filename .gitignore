@@ -1,0 +1,24 @@
+# Зависимости
+node_modules/
+
+# Сборка
+dist/
+build/
+
+# Внутренние заметки (не для публикации)
+PALETTE.md
+REACTBITS_NOTES.md
+
+# Резервные копии и мусор
+_TO_DELETE/
+_safe_backup_*/
+*.bak
+*.tmp
+
+# Системные файлы
+.DS_Store
+Thumbs.db
+
+# Логи и окружение
+*.log
+.env
