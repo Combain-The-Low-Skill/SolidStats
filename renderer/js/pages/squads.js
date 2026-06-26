@@ -4,8 +4,7 @@ Pages.squads = async function () {
   const content  = document.getElementById('pageContent');
   const controls = document.getElementById('topbarControls');
 
-  // Game type from settings (falls back to 'sg' since MACE/SM data not yet collected)
-  const gameType   = localStorage.getItem('sq_type') || 'sg';
+  const gameType = 'sg';
   let rotationIdx  = parseInt(localStorage.getItem('sq_rot') ?? '-1');
   let cardTimers   = [];   // setInterval IDs for cycling cards
   let rtInstances  = [];   // RotatingText instances for cleanup
@@ -19,36 +18,45 @@ Pages.squads = async function () {
   // Load rotations
   const rotations = await API.rotations(gameType);
 
-  // Controls
-  controls.innerHTML = `
-    <select class="filter-select" id="rotSelect"></select>
-  `;
+  // Controls — custom dropdown
+  controls.innerHTML = '';
 
-  function fillRotSelect(rots, selected) {
-    const sel = document.getElementById('rotSelect');
-    sel.innerHTML = '';
-    const allOpt = document.createElement('option');
-    allOpt.value = '-1';
-    allOpt.textContent = 'За всё время';
-    if (selected === -1) allOpt.selected = true;
-    sel.appendChild(allOpt);
+  function buildRotItems(rots) {
+    const items = [{
+      value: '-1',
+      label: 'За всё время',
+      sub: null,
+      isCurrent: false
+    }];
     rots.forEach((r, i) => {
-      const opt = document.createElement('option');
-      opt.value = i;
       const sd = new Date(r.startDate).toLocaleDateString('ru', {day:'2-digit',month:'2-digit',year:'2-digit'});
-      const ed = r.endDate ? new Date(r.endDate).toLocaleDateString('ru', {day:'2-digit',month:'2-digit',year:'2-digit'}) : 'н.вр.';
-      opt.textContent = `${sd} – ${ed} (${r.totalGames} игр)`;
-      if (i === selected) opt.selected = true;
-      sel.appendChild(opt);
+      const ed = r.endDate
+        ? new Date(r.endDate).toLocaleDateString('ru', {day:'2-digit',month:'2-digit',year:'2-digit'})
+        : 'н.вр.';
+      items.push({
+        value: String(i),
+        label: `${sd} – ${ed}`,
+        sub: `${r.totalGames} игр`,
+        isCurrent: !r.endDate   // текущий (незакрытый) период
+      });
     });
-    sel.addEventListener('change', () => {
-      rotationIdx = parseInt(sel.value);
-      localStorage.setItem('sq_rot', rotationIdx);
-      renderTable();
-    });
+    return items;
   }
 
-  fillRotSelect(rotations, rotationIdx);
+  const rotItems = buildRotItems(rotations);
+  const rotDropdown = createCustomDropdown({
+    items: rotItems,
+    selected: String(rotationIdx),
+    onChange: (v) => {
+      rotationIdx = parseInt(v);
+      localStorage.setItem('sq_rot', rotationIdx);
+      renderTable();
+    },
+    container: controls
+  });
+
+  // Sync dropdown if rotationIdx adjusted externally
+  function syncRotDropdown() { rotDropdown.setValue(String(rotationIdx)); }
 
   // ═══════════════════════════════════════════════════════
   // STAT CARDS

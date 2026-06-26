@@ -263,3 +263,124 @@ function errorHTML(message) {
 function esc(s) {
   return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
 }
+
+// ── Custom Dropdown ────────────────────────────────────────────────────
+// createCustomDropdown({ items, selected, onChange, container })
+//   items: [{ value, label, sub, isCurrent }]
+//   selected: value of initially selected item
+//   onChange: fn(value)
+//   container: HTMLElement to append into
+// Returns: { setValue(v) } for programmatic updates
+function createCustomDropdown({ items, selected, onChange, container }) {
+  let currentValue = selected;
+
+  function labelFor(v) {
+    const item = items.find(i => String(i.value) === String(v));
+    return item || items[0];
+  }
+
+  const wrap = document.createElement('div');
+  wrap.className = 'custom-dropdown';
+
+  const trigger = document.createElement('div');
+  trigger.className = 'custom-dropdown__trigger';
+
+  const labelEl = document.createElement('div');
+  labelEl.className = 'custom-dropdown__label';
+
+  const arrow = document.createElement('div');
+  arrow.className = 'custom-dropdown__arrow';
+  arrow.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>`;
+
+  trigger.appendChild(labelEl);
+  trigger.appendChild(arrow);
+
+  const menu = document.createElement('div');
+  menu.className = 'custom-dropdown__menu';
+
+  wrap.appendChild(trigger);
+  wrap.appendChild(menu);
+
+  function renderLabel(v) {
+    const item = labelFor(v);
+    if (!item) return;
+    labelEl.innerHTML = `<span class="dd-main">${esc(item.label)}</span>${item.sub ? `<span class="dd-sub">${esc(item.sub)}</span>` : ''}`;
+  }
+
+  function renderMenu() {
+    menu.innerHTML = '';
+    items.forEach(item => {
+      const row = document.createElement('div');
+      const isCur = item.isCurrent;
+      const isSel = String(item.value) === String(currentValue);
+      row.className = 'custom-dropdown__item' +
+        (isSel ? ' selected' : '') +
+        (item.value === '-1' || item.value === -1 ? ' custom-dropdown__item--all' : '') +
+        (isCur ? ' custom-dropdown__item--current' : '');
+
+      const dot = document.createElement('div');
+      dot.className = 'dd-item-dot';
+
+      const dateSpan = document.createElement('span');
+      dateSpan.className = 'dd-item-date';
+      dateSpan.textContent = item.label;
+
+      row.appendChild(dot);
+      row.appendChild(dateSpan);
+
+      if (item.sub) {
+        const countSpan = document.createElement('span');
+        countSpan.className = 'dd-item-count';
+        countSpan.textContent = item.sub;
+        row.appendChild(countSpan);
+      }
+
+      row.addEventListener('click', () => {
+        currentValue = item.value;
+        renderLabel(currentValue);
+        renderMenu();
+        close();
+        onChange(item.value);
+      });
+
+      menu.appendChild(row);
+    });
+  }
+
+  function open() {
+    wrap.classList.add('open');
+    // Scroll selected item into view
+    const sel = menu.querySelector('.selected');
+    if (sel) setTimeout(() => sel.scrollIntoView({ block: 'nearest' }), 50);
+  }
+
+  function close() {
+    wrap.classList.remove('open');
+  }
+
+  trigger.addEventListener('click', (e) => {
+    e.stopPropagation();
+    wrap.classList.contains('open') ? close() : open();
+  });
+
+  // Close on outside click — use capture to catch even stopPropagation
+  function outsideHandler(e) {
+    if (!wrap.contains(e.target)) close();
+  }
+  document.addEventListener('click', outsideHandler);
+
+  // Cleanup when page changes
+  PageCleanup.register(() => document.removeEventListener('click', outsideHandler));
+
+  renderLabel(currentValue);
+  renderMenu();
+  container.appendChild(wrap);
+
+  return {
+    setValue(v) {
+      currentValue = v;
+      renderLabel(v);
+      renderMenu();
+    }
+  };
+}

@@ -36,16 +36,6 @@ Pages.settings = async function () {
             <option value="200">200</option>
           </select>
         </div>
-        <div class="settings-row">
-          <div>
-            <div class="settings-label">Тип игры по умолчанию</div>
-          </div>
-          <div class="filter-group">
-            <button class="filter-btn" data-def="sg">SG</button>
-            <button class="filter-btn" data-def="mace">MACE</button>
-            <button class="filter-btn" data-def="sm">SM</button>
-          </div>
-        </div>
       </div>
 
       <div class="settings-section">
@@ -55,7 +45,7 @@ Pages.settings = async function () {
             <div class="settings-label">SolidStats</div>
             <div class="settings-desc">Статистика проекта SolidGames Arma 3</div>
           </div>
-          <span class="badge badge-green">v0.2.0</span>
+          <span class="badge badge-green">v0.2.1</span>
         </div>
         <div class="settings-row">
           <div>
@@ -100,18 +90,4 @@ Pages.settings = async function () {
     localStorage.setItem('pl_page_size', pageSizeSelect.value);
   });
 
-  // Default type.
-  // Важно: при смене типа игры данные другого типа в кэше неактуальны, поэтому
-  // сбрасываем кэш — иначе страницы покажут статистику предыдущего типа.
-  const defType = localStorage.getItem('sq_type') || 'sg';
-  content.querySelectorAll('[data-def]').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.def === defType);
-    btn.addEventListener('click', () => {
-      if (btn.dataset.def === (localStorage.getItem('sq_type') || 'sg')) return; // без изменений
-      content.querySelectorAll('[data-def]').forEach(b => b.classList.toggle('active', b.dataset.def === btn.dataset.def));
-      localStorage.setItem('sq_type', btn.dataset.def);
-      localStorage.setItem('pl_type', btn.dataset.def);
-      API.clearCache(); // данные нового типа подтянутся при следующем заходе на страницу
-    });
-  });
 };
