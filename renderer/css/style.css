@@ -1052,6 +1052,21 @@ tbody td.rank-top { color: var(--accent); }
   letter-spacing: 1px;
 }
 
+/* Строгий стиль графиков: квадратные углы, тонкая верхняя акцентная линия. */
+.chart-wrap.chart-strict {
+  border-radius: var(--radius-sm);
+  border-color: var(--border-light);
+  position: relative;
+}
+.chart-wrap.chart-strict::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--accent), transparent 70%);
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+}
+
 /* ===== TWO COLUMN LAYOUT ===== */
 .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
 @media (max-width: 900px) { .two-col { grid-template-columns: 1fr; } }

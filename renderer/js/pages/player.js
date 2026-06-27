@@ -57,7 +57,6 @@ Pages.player = async function ({ nick }) {
     const squad = p.lastSquadPrefix || '';
     const initial = (p.name || '?')[0].toUpperCase();
     const deaths = p.deaths?.total ?? 0;
-    const tkDeaths = p.deaths?.byTeamkills ?? 0;
     const vcoef = Math.round((p.killsFromVehicleCoef ?? 0) * 100);
 
     content.innerHTML = `
@@ -79,6 +78,7 @@ Pages.player = async function ({ nick }) {
         <div class="stat-card">
           <div class="stat-card-label">Игр</div>
           <div class="stat-card-value games-val">${p.totalPlayedGames ?? 0}</div>
+          <div class="stat-card-sub">&nbsp;</div>
         </div>
         <div class="stat-card">
           <div class="stat-card-label">Убийств</div>
@@ -93,17 +93,12 @@ Pages.player = async function ({ nick }) {
         <div class="stat-card">
           <div class="stat-card-label">Счёт</div>
           <div class="stat-card-value accent">${fmt(p.totalScore)}</div>
+          <div class="stat-card-sub">&nbsp;</div>
         </div>
         <div class="stat-card">
           <div class="stat-card-label">Техника выбита</div>
           <div class="stat-card-value">${p.vehicleKills ?? 0}</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-card-label">Тимкиллы</div>
-          <div class="stat-card-value ${(p.teamkills??0)>5?'':''}">
-            ${p.teamkills ?? 0}
-          </div>
-          <div class="stat-card-sub">ТК по мне: ${tkDeaths}</div>
+          <div class="stat-card-sub">&nbsp;</div>
         </div>
       </div>
 
@@ -113,7 +108,7 @@ Pages.player = async function ({ nick }) {
         <button class="tab-btn" data-tab="weapons">Оружие</button>
         <button class="tab-btn" data-tab="vehicles">Техника</button>
         <button class="tab-btn" data-tab="versus">Противники</button>
-        <button class="tab-btn" data-tab="weeks">По неделям</button>
+        <button class="tab-btn" data-tab="weeks">Подробно по неделям</button>
       </div>
 
       <!-- Tab panels -->
@@ -127,12 +122,16 @@ Pages.player = async function ({ nick }) {
     // Tab switching
     content.querySelectorAll('.tab-btn').forEach(btn => {
       btn.addEventListener('click', () => {
+        // Сохраняем позицию прокрутки, чтобы клик по вкладке не бросал страницу вверх.
+        const scroller = content.closest('.page-content') || content;
+        const keepScroll = scroller.scrollTop;
         const tab = btn.dataset.tab;
         content.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
         content.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === `tab-${tab}`));
         const activePanel = document.getElementById(`tab-${tab}`);
         if (activePanel) { activePanel.style.animation = 'none'; void activePanel.offsetWidth; activePanel.style.animation = 'fadeIn 0.28s cubic-bezier(0.22,1,0.36,1)'; }
         renderTab(tab);
+        scroller.scrollTop = keepScroll;
       });
     });
 
@@ -170,80 +169,165 @@ Pages.player = async function ({ nick }) {
     });
 
     panel.innerHTML = `
-      <div class="chart-wrap">
+      <div class="chart-wrap chart-strict">
         <div class="chart-title">Убийства по неделям (последние ${weeks.length} недель)</div>
         <canvas id="chartKills" height="80"></canvas>
       </div>
       <div class="two-col">
-        <div class="chart-wrap">
+        <div class="chart-wrap chart-strict">
           <div class="chart-title">K/D по неделям</div>
-          <canvas id="chartKD" height="100"></canvas>
+          <canvas id="chartKD" height="120"></canvas>
         </div>
-        <div class="chart-wrap">
+        <div class="chart-wrap chart-strict">
           <div class="chart-title">Счёт по неделям</div>
-          <canvas id="chartScore" height="100"></canvas>
+          <canvas id="chartScore" height="120"></canvas>
         </div>
       </div>`;
 
-    const chartDefaults = {
-      borderColor: 'var(--accent)',
-      backgroundColor: 'rgba(0,200,150,0.08)',
-      fill: true,
-      tension: 0.35,
-      pointRadius: 3,
-      pointHoverRadius: 5,
-      pointBackgroundColor: '#00c896',
-    };
+    const ACCENT = '#2ed9a0';
+    const VIOLET = '#7c6af5';
 
-    const gridColor = 'rgba(255,255,255,0.05)';
-    const tickColor = '#666';
+    makeLineChart('chartKills', labels, weeks.map(w => w.kills), ACCENT);
+    makeLineChart('chartKD',    labels, weeks.map(w => w.kdRatio), ACCENT);
+    makeLineChart('chartScore', labels, weeks.map(w => w.score),  VIOLET);
+  }
 
-    new Chart(document.getElementById('chartKills'), {
+  // Строгий линейный график с анимацией «отрисовки» слева направо.
+  function makeLineChart(canvasId, labels, data, color) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+
+    // Вертикальный градиент заливки под линией.
+    const fill = ctx.createLinearGradient(0, 0, 0, canvas.height || 200);
+    fill.addColorStop(0, hexToRgba(color, 0.18));
+    fill.addColorStop(1, hexToRgba(color, 0));
+
+    new Chart(canvas, {
       type: 'line',
-      data: { labels, datasets: [{ label: 'Убийств', data: weeks.map(w => w.kills), ...chartDefaults }] },
-      options: chartOptions('Убийств', gridColor, tickColor)
-    });
-
-    new Chart(document.getElementById('chartKD'), {
-      type: 'line',
-      data: { labels, datasets: [{ label: 'K/D', data: weeks.map(w => w.kdRatio), ...chartDefaults }] },
-      options: chartOptions('K/D', gridColor, tickColor)
-    });
-
-    new Chart(document.getElementById('chartScore'), {
-      type: 'line',
-      data: { labels, datasets: [{ label: 'Счёт', data: weeks.map(w => w.score), ...chartDefaults,
-        borderColor: '#7c6af5', backgroundColor: 'rgba(124,106,245,0.08)', pointBackgroundColor: '#7c6af5' }] },
-      options: chartOptions('Счёт', gridColor, tickColor)
+      data: {
+        labels,
+        datasets: [{
+          data,
+          borderColor: color,
+          backgroundColor: fill,
+          fill: true,
+          tension: 0,                 // строгие, не «мягкие» линии
+          borderWidth: 2,
+          pointRadius: 0,             // чистая линия без точек
+          pointHoverRadius: 4,
+          pointHoverBackgroundColor: color,
+          pointHoverBorderColor: '#090b0a',
+          pointHoverBorderWidth: 2,
+        }]
+      },
+      plugins: [revealLeftToRight()],
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        interaction: { mode: 'index', intersect: false },
+        // Анимацию делает плагин revealLeftToRight (clip), встроенную выключаем.
+        animation: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: '#101412',
+            borderColor: hexToRgba(color, 0.5),
+            borderWidth: 1,
+            titleColor: 'rgba(255,255,255,0.45)',
+            bodyColor: '#fff',
+            padding: 10,
+            cornerRadius: 6,
+            displayColors: false,
+          }
+        },
+        scales: {
+          x: {
+            grid: { display: false },
+            border: { color: 'rgba(255,255,255,0.10)' },
+            ticks: { color: 'rgba(255,255,255,0.30)', maxTicksLimit: 8, font: { size: 10 } }
+          },
+          y: {
+            grid: { color: 'rgba(255,255,255,0.05)' },
+            border: { display: false },
+            ticks: { color: 'rgba(255,255,255,0.30)', font: { size: 10 } },
+            beginAtZero: true
+          }
+        }
+      }
     });
   }
 
-  function chartOptions(label, gridColor, tickColor) {
+  // Плагин: рисует ВСЮ линию сразу, но показывает её через прямоугольную
+  // маску (clip), которая плавно расширяется слева направо. Это даёт ровную,
+  // непрерывную отрисовку без «ломаности» покадровой анимации точек.
+  function revealLeftToRight() {
+    const DURATION = 1100;
+    let start = null;
+    let progress = 0;
+    let running = false;
     return {
-      responsive: true,
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          backgroundColor: '#1e1e1e',
-          borderColor: '#333',
-          borderWidth: 1,
-          titleColor: '#aaa',
-          bodyColor: '#fff',
-        }
+      id: 'revealLeftToRight',
+      beforeDatasetsDraw(chart) {
+        const { ctx, chartArea } = chart;
+        if (!chartArea) return;
+        const { left, top, right, bottom } = chartArea;
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(left, top, (right - left) * progress, bottom - top);
+        ctx.clip();
       },
-      scales: {
-        x: { grid: { color: gridColor }, ticks: { color: tickColor, maxTicksLimit: 8 } },
-        y: { grid: { color: gridColor }, ticks: { color: tickColor }, beginAtZero: true }
+      afterDatasetsDraw(chart) {
+        chart.ctx.restore();
+        // Запускаем rAF-цикл один раз; chart.draw() внутри него снова вызовет
+        // этот хук, поэтому флаг running защищает от дублирования циклов.
+        if (progress >= 1 || running) return;
+        running = true;
+        const tick = (ts) => {
+          if (start === null) start = ts;
+          const t = Math.min((ts - start) / DURATION, 1);
+          progress = 1 - Math.pow(1 - t, 3); // плавное замедление к концу
+          if (t < 1) {
+            chart.draw();
+            requestAnimationFrame(tick);
+          } else {
+            running = false;
+            chart.draw();
+          }
+        };
+        requestAnimationFrame(tick);
       }
     };
   }
 
+  function hexToRgba(hex, a) {
+    const n = parseInt(hex.slice(1), 16);
+    return `rgba(${(n>>16)&255},${(n>>8)&255},${n&255},${a})`;
+  }
+
   function renderWeaponsTab(panel) {
-    const items = weaponsData?.firearms ?? [];
+    renderArsenalTab(panel, weaponsData?.firearms ?? [], 'оружия', '#2ed9a0');
+  }
+
+  function renderVehiclesTab(panel) {
+    renderArsenalTab(panel, weaponsData?.vehicles ?? [], 'техники', '#7c6af5');
+  }
+
+  // Общий рендер для вкладок «Оружие» и «Техника»:
+  // столбчатая диаграмма убийств + детальная таблица.
+  function renderArsenalTab(panel, items, noun, color) {
     if (!items.length) { panel.innerHTML = '<div class="empty-state"><p>Нет данных</p></div>'; return; }
+
+    const top = [...items].sort((a, b) => (b.kills ?? 0) - (a.kills ?? 0)).slice(0, 12);
+    const canvasId = `bar-${noun}`;
+
     panel.innerHTML = `
+      <div class="chart-wrap chart-strict">
+        <div class="chart-title">Убийства по видам ${noun} (топ ${top.length})</div>
+        <canvas id="${canvasId}" height="120"></canvas>
+      </div>
       <div class="mini-table-wrap">
-        <div class="mini-table-title">Топ оружия (${items.length})</div>
+        <div class="mini-table-title">Топ ${noun} (${items.length})</div>
         ${items.map((w, i) => `
           <div class="mini-table-row">
             <span class="mini-row-rank">${i+1}</span>
@@ -252,22 +336,74 @@ Pages.player = async function ({ nick }) {
             <span class="mini-row-dist">${w.maxDistance}м</span>
           </div>`).join('')}
       </div>`;
+
+    makeBarChart(canvasId, top.map(w => w.name), top.map(w => w.kills ?? 0), color);
   }
 
-  function renderVehiclesTab(panel) {
-    const items = weaponsData?.vehicles ?? [];
-    if (!items.length) { panel.innerHTML = '<div class="empty-state"><p>Нет данных</p></div>'; return; }
-    panel.innerHTML = `
-      <div class="mini-table-wrap">
-        <div class="mini-table-title">Топ техники (${items.length})</div>
-        ${items.map((v, i) => `
-          <div class="mini-table-row">
-            <span class="mini-row-rank">${i+1}</span>
-            <span class="mini-row-name" data-tooltip="${esc(v.name)}">${esc(v.name)}</span>
-            <span class="mini-row-kills">${v.kills} убийств</span>
-            <span class="mini-row-dist">${v.maxDistance}м</span>
-          </div>`).join('')}
-      </div>`;
+  // Вертикальная диаграмма со столбцами, вырастающими по очереди слева направо.
+  function makeBarChart(canvasId, labels, data, color) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+
+    const fill = ctx.createLinearGradient(0, 0, 0, canvas.height || 240);
+    fill.addColorStop(0, color);
+    fill.addColorStop(1, hexToRgba(color, 0.35));
+
+    const BAR_DUR = 520;
+    const STEP = 70; // задержка между столбцами
+
+    new Chart(canvas, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{
+          data,
+          backgroundColor: fill,
+          hoverBackgroundColor: color,
+          borderRadius: 3,
+          borderSkipped: false,
+          maxBarThickness: 46,
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        // Поочерёдное «вырастание» столбцов снизу вверх, слева направо.
+        animation: {
+          duration: BAR_DUR,
+          easing: 'easeOutCubic',
+          delay: (c) => c.type === 'data' && c.mode === 'default' ? c.dataIndex * STEP : 0,
+        },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: '#101412',
+            borderColor: hexToRgba(color, 0.5),
+            borderWidth: 1,
+            titleColor: 'rgba(255,255,255,0.45)',
+            bodyColor: '#fff',
+            padding: 10,
+            cornerRadius: 6,
+            displayColors: false,
+            callbacks: { label: (i) => `${i.formattedValue} убийств` }
+          }
+        },
+        scales: {
+          x: {
+            grid: { display: false },
+            border: { color: 'rgba(255,255,255,0.10)' },
+            ticks: { color: 'rgba(255,255,255,0.45)', font: { size: 10 }, maxRotation: 50, minRotation: 0 }
+          },
+          y: {
+            grid: { color: 'rgba(255,255,255,0.05)' },
+            border: { display: false },
+            ticks: { color: 'rgba(255,255,255,0.30)', font: { size: 10 } },
+            beginAtZero: true
+          }
+        }
+      }
+    });
   }
 
   function renderVersusTab(panel) {
@@ -335,7 +471,7 @@ Pages.player = async function ({ nick }) {
                 <td class="muted">${w.killsFromVehicle}</td>
                 <td class="muted">${vcoef}%</td>
                 <td class="muted">${w.vehicleKills}</td>
-                <td class="muted">${(w.teamkills??0)>0?`<span class="badge badge-red">${w.teamkills??0}</span>`:(w.teamkills??0)}</td>
+                <td class="tk-col">${w.teamkills ?? 0}</td>
                 <td class="muted">${w.deaths?.total??0}</td>
                 <td class="${(w.kdRatio??0)>=3?'accent':''}">${fmt(w.kdRatio)}</td>
                 <td class="accent">${fmt(w.score)}</td>

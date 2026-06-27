@@ -55,7 +55,7 @@ Pages.settings = async function () {
             <div class="settings-label">SolidStats</div>
             <div class="settings-desc">Статистика проекта SolidGames Arma 3</div>
           </div>
-          <span class="badge badge-green">v0.2.1</span>
+          <span class="badge badge-green">v0.2.2</span>
         </div>
         <div class="settings-row">
           <div>
