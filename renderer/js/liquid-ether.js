@@ -674,5 +674,24 @@
     document.hidden ? pause() : (isVisibleRef.current && start());
   });
 
-  start();
+  // Экспортируем управление для AnimMode
+  window.LiquidEther = {
+    start() { start(); },
+    pause() { pause(); },
+    setVisible(v) {
+      if (Common.renderer && Common.renderer.domElement) {
+        Common.renderer.domElement.style.display = v ? '' : 'none';
+      }
+      v ? start() : pause();
+    }
+  };
+
+  // Запускаем только в rich-режиме
+  if (typeof AnimMode === 'undefined' || AnimMode.isRich()) {
+    start();
+  } else {
+    if (Common.renderer && Common.renderer.domElement) {
+      Common.renderer.domElement.style.display = 'none';
+    }
+  }
 })();

@@ -36,6 +36,16 @@ Pages.settings = async function () {
             <option value="200">200</option>
           </select>
         </div>
+        <div class="settings-row">
+          <div>
+            <div class="settings-label">Полные анимации</div>
+            <div class="settings-desc">Fluid-фон, плавный счётчик и эффекты при загрузке. Выключите для экономии ресурсов.</div>
+          </div>
+          <label class="settings-toggle" title="Переключить режим анимаций">
+            <input type="checkbox" id="animModeToggle">
+            <span class="settings-toggle__track"></span>
+          </label>
+        </div>
       </div>
 
       <div class="settings-section">
@@ -88,6 +98,13 @@ Pages.settings = async function () {
   pageSizeSelect.value = savedPageSize;
   pageSizeSelect.addEventListener('change', () => {
     localStorage.setItem('pl_page_size', pageSizeSelect.value);
+  });
+
+  // Anim mode toggle
+  const animToggle = document.getElementById('animModeToggle');
+  animToggle.checked = AnimMode.isRich();
+  animToggle.addEventListener('change', () => {
+    AnimMode.set(animToggle.checked ? AnimMode.RICH : AnimMode.LITE);
   });
 
 };

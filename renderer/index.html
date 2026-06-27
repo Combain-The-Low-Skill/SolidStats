@@ -35,6 +35,19 @@
 
   <!-- WELCOME SCREEN -->
   <div id="welcomeScreen">
+    <button class="w-anim-toggle" id="wAnimToggle" title="Переключить качество анимации">
+      <svg class="w-anim-toggle__icon w-anim-toggle__icon--rich" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+      </svg>
+      <svg class="w-anim-toggle__icon w-anim-toggle__icon--lite" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="4"/>
+        <line x1="12" y1="2" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22"/>
+        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+        <line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/>
+        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+      </svg>
+      <span class="w-anim-toggle__label"></span>
+    </button>
     <div class="w-body">
 
       <!-- Left (Liquid Ether background injected by liquid-ether.js) -->
@@ -131,6 +144,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
   <!-- App scripts -->
+  <script src="js/anim-mode.js"></script>
   <script src="js/bootstrap.js"></script>
   <script src="js/rotating-text.js"></script>
   <script src="js/api.js"></script>

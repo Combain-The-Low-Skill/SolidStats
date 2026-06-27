@@ -5,10 +5,6 @@ node_modules/
 dist/
 build/
 
-# Внутренние заметки (не для публикации)
-PALETTE.md
-REACTBITS_NOTES.md
-
 # Резервные копии и мусор
 _TO_DELETE/
 _safe_backup_*/
@@ -22,3 +18,6 @@ Thumbs.db
 # Логи и окружение
 *.log
 .env
+
+# Вспомогательные заметки (палитра, реактбитс, промпт для ИИ)
+_docs/

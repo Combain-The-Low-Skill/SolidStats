@@ -95,6 +95,12 @@ function countUp(el, target, opts) {
     return parts.join(',');
   }
 
+  // В lite-режиме — сразу финальное значение
+  if (!AnimMode.isRich()) {
+    setTimeout(function() { el.textContent = format(target); }, delay);
+    return;
+  }
+
   var startTime = null;
   function tick(ts) {
     if (!startTime) startTime = ts;
@@ -111,10 +117,34 @@ function countUp(el, target, opts) {
 
 // ===== Welcome Screen =====
 (function initWelcome() {
-  const welcome = document.getElementById('welcomeScreen');
-  const app     = document.getElementById('appShell');
-  const btn     = document.getElementById('enterBtn');
-  const overlay = document.getElementById('staggerOverlay');
+  const welcome    = document.getElementById('welcomeScreen');
+  const app        = document.getElementById('appShell');
+  const btn        = document.getElementById('enterBtn');
+  const overlay    = document.getElementById('staggerOverlay');
+  const animToggle = document.getElementById('wAnimToggle');
+  const animLabel  = animToggle ? animToggle.querySelector('.w-anim-toggle__label') : null;
+
+  function updateAnimToggleLabel() {
+    if (!animLabel) return;
+    animLabel.textContent = AnimMode.isRich() ? 'Полные анимации' : 'Упрощённые';
+  }
+
+  if (animToggle) {
+    updateAnimToggleLabel();
+    animToggle.addEventListener('click', () => {
+      const wasRich = AnimMode.isRich();
+      AnimMode.toggle();
+      updateAnimToggleLabel();
+      if (window.LiquidEther) window.LiquidEther.setVisible(AnimMode.isRich());
+      if (wasRich && !AnimMode.isRich()) {
+        pillCycleActive = false;
+        if (pillCycleTimer) clearTimeout(pillCycleTimer);
+      } else if (!wasRich && AnimMode.isRich()) {
+        pillCycleActive = true;
+        pillCycle(false);
+      }
+    });
+  }
 
   // Реальные игроки с 50+ матчами (данные из API, deaths = deaths.total)
   var REAL_PLAYERS = [
@@ -194,7 +224,24 @@ function countUp(el, target, opts) {
     pillCycleTimer = setTimeout(function() { pillCycle(false); }, animMs + pauseMs);
   }
 
-  setTimeout(function() { pillCycle(true); }, 100);
+  if (AnimMode.isRich()) {
+    setTimeout(function() { pillCycle(true); }, 100);
+  } else {
+    // Lite: один раз выставляем статичные значения
+    var liteVals = genValues();
+    liteVals.forEach(function(p) {
+      var el = document.getElementById(p.id);
+      if (!el) return;
+      var fixed = p.target.toFixed(p.decimals);
+      if (p.separator) {
+        var parts = fixed.split('.');
+        parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, p.separator);
+        el.textContent = parts.join(',');
+      } else {
+        el.textContent = fixed;
+      }
+    });
+  }
 
   btn.addEventListener('click', () => {
     btn.disabled = true;
@@ -234,6 +281,12 @@ function countUp(el, target, opts) {
 
 function animateCards(container) {
   if (!container) return;
+  if (!AnimMode.isRich()) {
+    container.querySelectorAll('.stat-card').forEach(card => {
+      card.classList.add('card-animate');
+    });
+    return;
+  }
   container.querySelectorAll('.stat-card').forEach((card, i) => {
     card.style.opacity = '0';
     card.style.transform = 'translateY(10px)';
